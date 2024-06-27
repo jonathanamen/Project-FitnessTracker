@@ -19,7 +19,6 @@ plt.rcParams["figure.dpi"] = 100
 
 # JA: single boxplot
 df[["acc_x", "label"]].boxplot(by="label", figsize=(20, 10))
-plt.show()
 
 # JA: get a list of column labels for our plot
 # JA: we only have to do this for columns and not excersize types because we don't want to
@@ -30,7 +29,6 @@ outlier_columns = list(df.columns[:6])
 # JA: all measurements boxplots
 df[outlier_columns[:3] + ["label"]].boxplot(by="label", figsize=(20, 10), layout=(1, 3))
 df[outlier_columns[3:] + ["label"]].boxplot(by="label", figsize=(20, 10), layout=(1, 3))
-plt.show()
 
 
 # JA: dave's custom plot function imported from code from part 4 page
@@ -85,8 +83,6 @@ def plot_binary_outliers(dataset, col, outlier_col, reset_index):
 # --------------------------------------------------------------
 # Interquartile range (distribution based)
 # --------------------------------------------------------------
-
-
 # Insert IQR function
 def mark_outliers_iqr(dataset, col):
     """Function to mark values as outliers using the IQR method.
@@ -140,7 +136,6 @@ for col in outlier_columns:
 # JA: all measurements boxplots
 df[outlier_columns[:3] + ["label"]].boxplot(by="label", figsize=(20, 10), layout=(1, 3))
 df[outlier_columns[3:] + ["label"]].boxplot(by="label", figsize=(20, 10), layout=(1, 3))
-plt.show()
 
 # JA: all measurements historgram
 df[outlier_columns[:3] + ["label"]].plot.hist(
@@ -149,7 +144,6 @@ df[outlier_columns[:3] + ["label"]].plot.hist(
 df[outlier_columns[3:] + ["label"]].plot.hist(
     by="label", figsize=(20, 20), layout=(3, 3)
 )
-plt.show()
 
 
 # Insert Chauvenet's function
@@ -208,8 +202,6 @@ for col in outlier_columns:
 # --------------------------------------------------------------
 # Local outlier factor (distance based)
 # --------------------------------------------------------------
-
-
 # Insert LOF function
 def mark_outliers_lof(dataset, columns, n=20):
     """Mark values as outliers using LOF
@@ -284,7 +276,7 @@ df_woutliers[df_woutliers["gyr_y_outlier"]]
 # JA: first create a copy of the data to work with
 df_inliers = df.copy()
 
-# JA: for each value col
+# JA: for each value col - this shows you how many records are removed
 for col in outlier_columns:
 
     # JA: value col isolated, now isolate exercise type (label)

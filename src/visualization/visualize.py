@@ -146,7 +146,7 @@ df_all_axis = (
 
 fig, ax = plt.subplots()
 df_all_axis[["acc_x", "acc_y", "acc_z"]].plot(ax=ax)
-ax.set_ylabel("acc_y")
+ax.set_ylabel("acc data")
 ax.set_xlabel("samples")
 plt.legend()
 
@@ -172,7 +172,7 @@ for label in labels:
 
             fig, ax = plt.subplots()
             df_all_axis[["acc_x", "acc_y", "acc_z"]].plot(ax=ax)
-            ax.set_ylabel("acc_y")
+            ax.set_ylabel("acc data")
             ax.set_xlabel("samples")
             plt.title(f"{label} ({participant})".title())
             plt.legend()
