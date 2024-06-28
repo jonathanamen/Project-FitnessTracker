@@ -12,8 +12,11 @@ from sklearn.cluster import KMeans
 # --------------------------------------------------------------
 df = pd.read_pickle("../../data/interim/02_data_outliers_rem_chauvenets.pkl")
 
+#JA: I think I might not have all the excersizes
+df["label"].unique()
+
 # JA: get first 6 col names (this autoskips the index col name)
-columns_predictor = df.columns[:6]
+columns_predictor = list(df.columns[:6])
 
 plt.style.use("fivethirtyeight")
 plt.rcParams["figure.figsize"] = (20, 5)
@@ -47,7 +50,7 @@ df.info()
 df[df["set"] == 25]["acc_y"].plot()
 df[df["set"] == 50]["acc_y"].plot()
 
-# JA: -1 is the last frame of the dataframe and 1 is the first
+# JA: -1 is the last frame of the dataframe and 0 is the first
 # JA: this is the time diff between first and last rep
 duration = df[df["set"] == 1].index[-1] - df[df["set"] == 1].index[0]
 duration.seconds
@@ -69,18 +72,21 @@ df_duration.iloc[1] / 10
 
 
 # --------------------------------------------------------------
-# Butterworth lowpass filter
+# Butterworth lowpass filter (frequency reduction)
 # --------------------------------------------------------------
 # JA: this filter basically resamples the data around common movement in the data
+#JA: it smooths out a wave form
+#JA: mostly used to smooth out jerky movements
 
 df_lowpass = df.copy()
 LowPass = LowPassFilter()
 
-freqsec = 1000 / 200  # JA: sec div by how many ms
-# JA: higher this number, the less we resample the data - higher jagged lower smoother
-cutoff = 1.20
+freq_sampling = 1000 / 200  # JA: 1 sec div by how many ms (our data is every 200ms)
+# JA: the higher this number, the less we resample the data - higher jagged lower smoother
+#JA: manipulate this number until you get good results
+freq_cutoff = 1.20
 
-df_lowpass = LowPass.low_pass_filter(df_lowpass, "acc_y", freqsec, cutoff, order=5)
+df_lowpass = LowPass.low_pass_filter(df_lowpass, "acc_y", freq_sampling, freq_cutoff, order=5)
 
 subset = df_lowpass[df_lowpass["set"] == 45]
 print(subset["label"][0])
@@ -96,9 +102,17 @@ ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), fancybox=True, shad
 for col in columns_predictor:
     # JA: not adding cols here - overwriting cols
     # JA: to be clear, first generate lowpass col - then overwrite - then del lowpass col
-    df_lowpass = LowPass.low_pass_filter(df_lowpass, col, freqsec, cutoff, order=5)
+    df_lowpass = LowPass.low_pass_filter(df_lowpass, col, freq_sampling, freq_cutoff, order=5)
     df_lowpass[col] = df_lowpass[col + "_lowpass"]
     del df_lowpass[col + "_lowpass"]
+    
+    
+"""JA: this is where I'm a bit unsure... why are we smoothing out original data? Wouldn't
+that make it possible to over-smooth a movement and then the model will think an
+exercise happened when it didn't? Also we will have to smooth out all incoming
+data, which again means we might lose too much data and the model will fail to predict
+correctly. (Later in this series this guy tests against the smoothed out data. He gets
+99.5% accuracy, but that's against smoothed data. Not sure I completely agree here.)"""
 
 
 # --------------------------------------------------------------
@@ -106,11 +120,13 @@ for col in columns_predictor:
 # --------------------------------------------------------------
 # JA: used in machine learning to reduce the complexity of data by
 # JA: transforming the data into a new set of variables called principal component
-# JA: basically merges variables into most relevant data points
+# JA: basically merges variables into most relevant data points, reducing complexity
+# and noise
 df_pca = df_lowpass.copy()
 
 PCA = PrincipalComponentAnalysis()
 
+#JA: determine the optimal amount of principal components - get each col's variance
 pc_values = PCA.determine_pc_explained_variance(df_pca, columns_predictor)
 
 # JA: the optimal component number is chosen as the number of components that capture
@@ -140,6 +156,7 @@ subset[["pca_1", "pca_2", "pca_3"]].plot()
 # r = square root of (square the readings and add that together)
 df_squared = df_pca.copy()
 
+#JA: do the math and add features to df
 acc_r = df_squared["acc_x"] ** 2 + df_squared["acc_y"] ** 2 + df_squared["acc_z"] ** 2
 gyr_r = df_squared["gyr_x"] ** 2 + df_squared["gyr_y"] ** 2 + df_squared["gyr_z"] ** 2
 
@@ -149,12 +166,11 @@ df_squared["gyr_r"] = np.sqrt(gyr_r)
 subset = df_squared[df_squared["set"] == 14]
 subset[["acc_r", "gyr_r"]].plot(subplots=True)
 
-df_squared
-
 
 # --------------------------------------------------------------
-# Temporal abstraction
+# Temporal abstraction (frequency reduction)
 # --------------------------------------------------------------
+#JA: rolling averages from pandas
 df_tempabs = df_squared.copy()
 
 NumAbs = NumericalAbstraction()
@@ -168,7 +184,8 @@ columns_predictor = list(df_tempabs.columns[:6]) + ["acc_r", "gyr_r"]
 # first x records due to the fact the first x records are actually pulling
 # data from a different type of excersize, making them invalid
 
-# JA: here we use a window size of 1 sec (1000 ms)
+# JA: lets create a window size - we want to have a window size of 1 sec, which
+# means we need 5 data points since they are 200ms each
 ws = int(1000 / 200)
 
 # JA: for each record calculate the mean and standard dev based on window size
@@ -200,17 +217,20 @@ df_tempabs = pd.concat(df_tempabs_list)
 subset[["acc_y", "acc_y_temp_mean_ws_5", "acc_y_temp_std_ws_5"]].plot()
 subset[["gyr_y", "gyr_y_temp_mean_ws_5", "gyr_y_temp_std_ws_5"]].plot()
 
+df_tempabs.info()
+
 
 # --------------------------------------------------------------
-# Frequency features
+# Discrete Fourier Transformation (DFT) (Freq Complexity Reduction)
 # --------------------------------------------------------------
-# JA: decompose orig signal into it's component frequencies (into its different sin waves)
+# JA: decompose orig signal into it's component frequencies (into its different waves)
 df_freq = df_tempabs.copy().reset_index()
 
 FreqAbs = FourierTransformation()
 
+#JA: sampling rate and window size
 sr = int(1000 / 200)
-ws = int(2000 / 200)
+ws = int(2000 / 200) #JA: average rate of a rep, which was about 1 sec
 
 # JA: split this wave into component freq
 df_freq = FreqAbs.abstract_frequency(df_freq, ["acc_y"], ws, sr)
@@ -264,7 +284,7 @@ df_overlap = df_freq.dropna()
 df_overlap.iloc[::2]
 
 # --------------------------------------------------------------
-# Clustering
+# Kmeans Clustering (Removing complexity)
 # --------------------------------------------------------------
 # JA: kmeans clustering
 # JA: k is the total clusters we want, and this will cluster our data around
@@ -273,6 +293,7 @@ df_overlap.iloc[::2]
 df_clust = df_overlap.copy()
 
 columns_cluster = ["acc_y", "acc_x", "acc_z"]
+#JA: this is the number of clusters we will test, 2 clusters to 10 clusters
 k_range = range(2, 10)
 intertias = []  # JA: results
 
@@ -281,8 +302,10 @@ for k in k_range:
     subset = df_clust[columns_cluster]
     kmeans_result = KMeans(n_clusters=k, n_init=20, random_state=0)
     # JA: then get fit predict
+    #JA: train the model (fit) and then do a prediction, so we know which k is best
     cluster_labels = kmeans_result.fit_predict(subset)
     # JA: store the inertias so we can use elbow
+    #JA: inertia is how accurate the fit was
     intertias.append(kmeans_result.inertia_)
 
 # JA: lets look at it to determine elbow

@@ -10,6 +10,9 @@ from sklearn.neighbors import LocalOutlierFactor  # pip install scikit-learn
 # --------------------------------------------------------------
 df = pd.read_pickle("../../data/interim/data_processed_01.pkl")
 
+#JA: check to make sure I have all the excersizes
+df["label"].unique()
+
 # --------------------------------------------------------------
 # Plotting outliers
 # --------------------------------------------------------------
