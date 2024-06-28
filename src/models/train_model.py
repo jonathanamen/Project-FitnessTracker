@@ -7,6 +7,7 @@ import seaborn as sns
 import itertools
 from sklearn.metrics import accuracy_score, confusion_matrix
 
+df = pd.read_pickle("../../data/interim/03_data_features-take2.pkl")
 
 # Plot settings
 plt.style.use("fivethirtyeight")
@@ -14,11 +15,9 @@ plt.rcParams["figure.figsize"] = (20, 5)
 plt.rcParams["figure.dpi"] = 100
 plt.rcParams["lines.linewidth"] = 2
 
-df = pd.read_pickle("../../data/interim/03_data_features.pkl")
-
 
 # --------------------------------------------------------------
-# Create a training and test set
+# Create training and test sets
 # --------------------------------------------------------------
 # JA: get rid of these columns
 df_train = df.drop(["participant", "category", "set"], axis=1)
@@ -43,7 +42,6 @@ fig, ax = plt.subplots(figsize=(10, 5))
 df_train["label"].value_counts().plot(
     kind="bar", ax=ax, color="lightblue", label="Total"
 )
-
 y_train.value_counts().plot(kind="bar", ax=ax, color="dodgerblue", label="Train")
 y_test.value_counts().plot(kind="bar", ax=ax, color="royalblue", label="Test")
 plt.legend()
@@ -116,18 +114,16 @@ plt.xticks(np.arange(1, features_max + 1, 1))
 plt.show()
 
 #JA: store features so we don't lose them
-features_selected = [
-    'acc_y_freq_0.0_Hz_ws_10',
-    'duration',
-    'acc_x_freq_0.0_Hz_ws_10',
-    'acc_z_temp_mean_ws_5',
-    'gyr_r_temp_mean_ws_5',
-    'gyr_z_freq_1.0_Hz_ws_10',
-    'gyr_x_max_freq',
-    'acc_z_pse',
-    'gyr_r_freq_2.0_Hz_ws_10',
-    'gyr_x_freq_2.5_Hz_ws_10'
-]
+features_selected = ['acc_x_freq_0.0_Hz_ws_10',
+ 'acc_z_temp_mean_ws_5',
+ 'duration',
+ 'acc_z_pse',
+ 'acc_x_freq_1.5_Hz_ws_10',
+ 'acc_z',
+ 'acc_z_max_freq',
+ 'acc_z_freq_2.5_Hz_ws_10',
+ 'gyr_z',
+ 'gyr_z_freq_1.5_Hz_ws_10']
 
 
 
@@ -248,8 +244,10 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
 # --------------------------------------------------------------
 # Create a grouped bar plot to compare the results
 # --------------------------------------------------------------
+#JA: get list of best model and feature sets
 df_score.sort_values(by="accuracy", ascending=False)
 
+#JA: now use a graph to see which model is working best with our data
 plt.figure(figsize=(10, 10))
 sns.barplot(x="model", y="accuracy", hue="feature_set", data=df_score)
 plt.xlabel("Model")
@@ -263,10 +261,9 @@ plt.show()
 # --------------------------------------------------------------
 # Select best model and evaluate results
 # --------------------------------------------------------------
-#JA: using random forest, feature set 4
 #JA: lets train it on a confusion matrix
-#JA: get random forest guts
-(
+#JA: copy the model set up from above for the model you've chosen
+( #JA: using random forest, feature set 4
 class_train_y,
 class_test_y,
 class_train_prob_y,
@@ -279,6 +276,7 @@ x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=True
 accuracy = accuracy_score(y_test,class_test_y)
 
 #JA: create confusion matrix
+#JA: this is a matrix that looks at correct and incorrect predictions
 classes = class_test_prob_y.columns
 cm = confusion_matrix(y_test, class_test_y, labels=classes)
 
@@ -332,7 +330,6 @@ fig, ax = plt.subplots(figsize=(10, 5))
 df_train["label"].value_counts().plot(
     kind="bar", ax=ax, color="lightblue", label="Total"
 )
-
 y_train.value_counts().plot(kind="bar", ax=ax, color="dodgerblue", label="Train")
 y_test.value_counts().plot(kind="bar", ax=ax, color="royalblue", label="Test")
 plt.legend()
@@ -343,16 +340,14 @@ plt.show()
 # --------------------------------------------------------------
 # Use best model again and evaluate results
 # --------------------------------------------------------------
-#JA: using random forest, features selected
-#JA: lets train it on a confusion matrix
-#JA: get random forest guts
-(
+#JA: train again and see if it can predict participant A
+( #JA: using random forest, feature set 4
 class_train_y,
 class_test_y,
 class_train_prob_y,
 class_test_prob_y,
-) = learner.feedforward_neural_network(
-x_train[features_selected], y_train, x_test[features_selected], gridsearch=True
+) = learner.random_forest(
+x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=True
 )
 
 #JA: calculate accuracy
@@ -393,8 +388,6 @@ plt.show()
 # Try a simpler model with the selected features
 # --------------------------------------------------------------
 #JA: using NN
-#JA: lets train it on a confusion matrix
-#JA: get random forest guts
 (
 class_train_y,
 class_test_y,

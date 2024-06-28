@@ -281,7 +281,7 @@ df_overlap = df_freq.dropna()
 # JA: getting rid of 50% of the data is recommended - lots of data loss but more accurate
 # JA: this iloc says I want every other row please
 # JA: this reduces created correlation
-df_overlap.iloc[::2]
+df_overlap = df_overlap.iloc[::2]
 
 # --------------------------------------------------------------
 # Kmeans Clustering (Removing complexity)
@@ -337,4 +337,4 @@ plt.show()
 # --------------------------------------------------------------
 # Export dataset
 # --------------------------------------------------------------
-df_clust.to_pickle("../../data/interim/03_data_features.pkl")
+df_clust.to_pickle("../../data/interim/03_data_features-take2.pkl")
