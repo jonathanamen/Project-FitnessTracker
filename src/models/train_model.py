@@ -114,16 +114,16 @@ plt.xticks(np.arange(1, features_max + 1, 1))
 plt.show()
 
 #JA: store features so we don't lose them
-features_selected = ['acc_x_freq_0.0_Hz_ws_10',
- 'acc_z_temp_mean_ws_5',
+features_selected = ['pca_1',
  'duration',
- 'acc_z_pse',
- 'acc_x_freq_1.5_Hz_ws_10',
- 'acc_z',
- 'acc_z_max_freq',
- 'acc_z_freq_2.5_Hz_ws_10',
- 'gyr_z',
- 'gyr_z_freq_1.5_Hz_ws_10']
+ 'acc_x_freq_0.0_Hz_ws_10',
+ 'acc_z_temp_mean_ws_5',
+ 'acc_r_freq_0.5_Hz_ws_10',
+ 'acc_y_temp_mean_ws_5',
+ 'gyr_r_freq_1.0_Hz_ws_10',
+ 'pca_3',
+ 'gyr_y_freq_2.5_Hz_ws_10',
+ 'acc_z_temp_std_ws_5']
 
 
 
@@ -131,6 +131,7 @@ features_selected = ['acc_x_freq_0.0_Hz_ws_10',
 # Grid search for best hyperparameters and model selection
 # --------------------------------------------------------------
 #JA: find the best hyper parameters for my model
+#JA: hyperparameter tuning... cool
 feature_sets_possible = [
     feature_set_1
     ,feature_set_2
@@ -168,11 +169,8 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
             class_train_prob_y,
             class_test_prob_y,
         ) = learner.feedforward_neural_network(
-            selected_train_X,
-            y_train,
-            selected_test_X,
-            gridsearch=False,
-        )
+            selected_train_X, y_train, selected_test_X, gridsearch=False
+            )
         performance_test_nn += accuracy_score(y_test, class_test_y)
 
         print("\tTraining random forest,", it)
@@ -183,7 +181,7 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
             class_test_prob_y,
         ) = learner.random_forest(
             selected_train_X, y_train, selected_test_X, gridsearch=True
-        )
+            )
         performance_test_rf += accuracy_score(y_test, class_test_y)
 
     performance_test_nn = performance_test_nn / iterations
@@ -198,7 +196,7 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
         class_test_prob_y,
     ) = learner.k_nearest_neighbor(
         selected_train_X, y_train, selected_test_X, gridsearch=True
-    )
+        )
     performance_test_knn = accuracy_score(y_test, class_test_y)
 
     print("\tTraining decision tree")
@@ -209,7 +207,7 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
         class_test_prob_y,
     ) = learner.decision_tree(
         selected_train_X, y_train, selected_test_X, gridsearch=True
-    )
+        )
     performance_test_dt = accuracy_score(y_test, class_test_y)
 
     print("\tTraining naive bayes")
@@ -218,7 +216,9 @@ for i, f in zip(range(len(feature_sets_possible)), feature_names):
         class_test_y,
         class_train_prob_y,
         class_test_prob_y,
-    ) = learner.naive_bayes(selected_train_X, y_train, selected_test_X)
+    ) = learner.naive_bayes(
+        selected_train_X, y_train, selected_test_X
+        )
 
     performance_test_nb = accuracy_score(y_test, class_test_y)
 
@@ -261,15 +261,14 @@ plt.show()
 # --------------------------------------------------------------
 # Select best model and evaluate results
 # --------------------------------------------------------------
-#JA: lets train it on a confusion matrix
 #JA: copy the model set up from above for the model you've chosen
-( #JA: using random forest, feature set 4
-class_train_y,
-class_test_y,
-class_train_prob_y,
-class_test_prob_y,
-) = learner.random_forest(
-x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=True
+( #JA: decision tree, features_selected
+    class_train_y,
+    class_test_y,
+    class_train_prob_y,
+    class_test_prob_y,
+) = learner.decision_tree(
+    x_train[features_selected], y_train, x_test[features_selected], gridsearch=True
 )
 
 #JA: calculate accuracy
@@ -341,13 +340,13 @@ plt.show()
 # Use best model again and evaluate results
 # --------------------------------------------------------------
 #JA: train again and see if it can predict participant A
-( #JA: using random forest, feature set 4
-class_train_y,
-class_test_y,
-class_train_prob_y,
-class_test_prob_y,
-) = learner.random_forest(
-x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=True
+( #JA: decision tree, features_selected
+    class_train_y,
+    class_test_y,
+    class_train_prob_y,
+    class_test_prob_y,
+) = learner.decision_tree(
+    x_train[features_selected], y_train, x_test[features_selected], gridsearch=True
 )
 
 #JA: calculate accuracy
@@ -387,14 +386,61 @@ plt.show()
 # --------------------------------------------------------------
 # Try a simpler model with the selected features
 # --------------------------------------------------------------
-#JA: using NN
-(
-class_train_y,
-class_test_y,
-class_train_prob_y,
-class_test_prob_y,
+#JA: using RF
+( #JA: random forest, selected features
+    class_train_y,
+    class_test_y,
+    class_train_prob_y,
+    class_test_prob_y,
 ) = learner.random_forest(
-x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=False
+    x_train[features_selected], y_train, x_test[features_selected], gridsearch=True
+    )
+
+#JA: calculate accuracy
+accuracy = accuracy_score(y_test,class_test_y)
+
+#JA: create confusion matrix
+classes = class_test_prob_y.columns
+cm = confusion_matrix(y_test, class_test_y, labels=classes)
+
+#JA: graph it or whatever
+# create confusion matrix for cm
+#JA: this shows were wrong predictions occur
+plt.figure(figsize=(10, 10))
+plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+plt.title("Confusion matrix")
+plt.colorbar()
+tick_marks = np.arange(len(classes))
+plt.xticks(tick_marks, classes, rotation=45)
+plt.yticks(tick_marks, classes)
+
+thresh = cm.max() / 2.0
+for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(
+        j,
+        i,
+        format(cm[i, j]),
+        horizontalalignment="center",
+        color="white" if cm[i, j] > thresh else "black",
+    )
+plt.ylabel("True label")
+plt.xlabel("Predicted label")
+plt.grid(False)
+plt.show()
+
+
+
+# --------------------------------------------------------------
+# Try a more complex model with feature set 4, which is all features
+# --------------------------------------------------------------
+#JA: using NN
+( #JA: neural network, feature set 4
+    class_train_y,
+    class_test_y,
+    class_train_prob_y,
+    class_test_prob_y,
+) = learner.feedforward_neural_network(
+    x_train[feature_set_4], y_train, x_test[feature_set_4], gridsearch=False
 )
 
 #JA: calculate accuracy
