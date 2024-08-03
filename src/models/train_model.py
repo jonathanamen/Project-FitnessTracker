@@ -449,7 +449,6 @@ accuracy = accuracy_score(y_test,class_test_y)
 #JA: create confusion matrix
 classes = class_test_prob_y.columns
 cm = confusion_matrix(y_test, class_test_y, labels=classes)
-
 #JA: graph it or whatever
 # create confusion matrix for cm
 #JA: this shows were wrong predictions occur
